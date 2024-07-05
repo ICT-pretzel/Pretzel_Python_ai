@@ -1,0 +1,19 @@
+# 제외할 폴더 및 파일
+
+# videos 폴더 및 하위 파일 제외
+videos/
+
+# subtitles 폴더 및 하위 파일 제외
+subtitles/
+
+# profiles 폴더 및 하위 파일 제외
+profiles/
+
+# kobert_safetensors 폴더 및 하위 파일 제외
+kobert_safetensors/
+
+# __pycache__ 폴더 및 하위 파일 제외
+__pycache__/
+
+# 특정 파일 제외
+actor_embeddings.pkl
