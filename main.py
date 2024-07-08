@@ -1,5 +1,6 @@
 import os
 import uvicorn
+<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -83,7 +84,21 @@ async def kobert(subtitle_url: str):
     except Exception as e:
         print(f"Exception: {str(e)}")  # 예외 발생 시 로그 출력
         raise HTTPException(status_code=500, detail=str(e))  # 예외 응답 반환
+=======
+from fastapi import FastAPI
+from actor_face_movie_util import router as actor_face_movie_router
+from emotion_music_movie_util import router as emotion_music_movie_router
+from worlds_subtitle_movie import router as worlds_subtitle_movie_router
+
+app = FastAPI()
+
+# Include routers from other modules
+app.include_router(actor_face_movie_router, prefix="/actor_face_movie")
+app.include_router(emotion_music_movie_router, prefix="/emotion_music_movie")
+app.include_router(worlds_subtitle_movie_router, prefix="/worlds_subtitle_movie")
+>>>>>>> origin/lee
 
 if __name__ == "__main__":
     print("서버를 시작합니다...")
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\ICT05_04\\Desktop\\finalproject\\movie\\translate-movie-427703-adec2ac5235a.json"
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
