@@ -8,7 +8,7 @@ from actor_face_movie_util import update_actors, load_embeddings, process_video
 from emotion_music_movie_util import process_emotion_music_movie
 from datetime import datetime
 import json
-
+from kobert import kobert_eval
 app = FastAPI()
 
 class VideoURL(BaseModel):
