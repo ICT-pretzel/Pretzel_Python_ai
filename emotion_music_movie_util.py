@@ -73,7 +73,7 @@ def analyze_music_mood(audio_file):
                 start_time = i * 10
                 end_time = (i + 1) * 10
                 results.append({
-                    "timestamp": f"{convert_seconds_to_hms(start_time)}-{convert_seconds_to_hms(end_time)}",
+                    "timestamp": f"{convert_seconds_to_srt_timestamp(start_time)} --> {convert_seconds_to_srt_timestamp(end_time)}",
                     "result": max_result
                 })
         return results, emotion_counts
@@ -81,11 +81,12 @@ def analyze_music_mood(audio_file):
         print(f"Error analyzing music mood: {e}")
         raise HTTPException(status_code=500, detail=f"Music mood analysis error: {e}")
 
-def convert_seconds_to_hms(seconds):
+def convert_seconds_to_srt_timestamp(seconds):
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
-    s = seconds % 60
-    return f"{h:02}:{m:02}:{s:05.2f}"
+    s = int(seconds % 60)
+    ms = int((seconds % 1) * 1000)
+    return f"{h:02}:{m:02}:{s:02},{ms:03}"
 
 def process_emotion_music_movie(video_url):
     try:
