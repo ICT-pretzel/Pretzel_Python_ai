@@ -1,16 +1,22 @@
 import os
 import uvicorn
-<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import requests
-from actor_face_movie_util import update_actors, load_embeddings, process_video
-from emotion_music_movie_util import process_emotion_music_movie
 from datetime import datetime
 import json
 from kobert import kobert_eval
+from actor_face_movie_util import router as actor_face_movie_router
+from emotion_music_movie_util import router as emotion_music_movie_router
+from worlds_subtitle_movie import router as worlds_subtitle_movie_router
+
 app = FastAPI()
+
+# Include routers from other modules
+app.include_router(actor_face_movie_router, prefix="/actor_face_movie")
+app.include_router(emotion_music_movie_router, prefix="/emotion_music_movie")
+app.include_router(worlds_subtitle_movie_router, prefix="/worlds_subtitle_movie")
 
 class VideoURL(BaseModel):
     url: str
@@ -84,19 +90,6 @@ async def kobert(subtitle_url: str):
     except Exception as e:
         print(f"Exception: {str(e)}")  # 예외 발생 시 로그 출력
         raise HTTPException(status_code=500, detail=str(e))  # 예외 응답 반환
-=======
-from fastapi import FastAPI
-from actor_face_movie_util import router as actor_face_movie_router
-from emotion_music_movie_util import router as emotion_music_movie_router
-from worlds_subtitle_movie import router as worlds_subtitle_movie_router
-
-app = FastAPI()
-
-# Include routers from other modules
-app.include_router(actor_face_movie_router, prefix="/actor_face_movie")
-app.include_router(emotion_music_movie_router, prefix="/emotion_music_movie")
-app.include_router(worlds_subtitle_movie_router, prefix="/worlds_subtitle_movie")
->>>>>>> origin/lee
 
 if __name__ == "__main__":
     print("서버를 시작합니다...")
