@@ -1,5 +1,5 @@
 import uvicorn  # uvicorn을 임포트하여 ASGI 서버로 사용
-from fastapi import FastAPI, HTTPException  # FastAPI와 HTTP 예외 처리를 위한 모듈 임포트
+from fastapi import FastAPI, HTTPException, File, UploadFile  # FastAPI와 HTTP 예외 처리를 위한 모듈 임포트
 from fastapi.responses import JSONResponse, FileResponse  # JSON 응답과 파일 응답을 위해 필요한 모듈 임포트
 from pydantic import BaseModel  # 데이터 검증을 위한 Pydantic BaseModel 임포트
 import requests  # HTTP 요청을 위해 requests 라이브러리 임포트
@@ -15,6 +15,8 @@ from tqdm import tqdm  # 진행 상태 표시를 위한 tqdm 임포트
 from emotion_music_movie_util import extract_audio_from_video, analyze_music_mood
 # 얼굴 인식 유틸리티 임포트
 from actor_face_movie_util import adjust_brightness_contrast, embeddings, actors, convert_seconds_to_hms
+
+from kobert import extract_str, kobert_eval;
 
 # FastAPI 앱 초기화
 app = FastAPI()
@@ -140,6 +142,23 @@ async def emotion_music_movie(video_url: VideoURL):
             json.dump({"mood_results": final_results}, f)
 
         return FileResponse(result_file)  # JSON 파일 응답 반환
+
+    except Exception as e:
+        print(f"Exception: {str(e)}")  # 예외 발생 시 로그 출력
+        raise HTTPException(status_code=500, detail=str(e))  # 예외 응답 반환
+    
+@app.post("/kobert/")
+async def kobert(subtitle_url: str):
+    try:
+        print("Request received for music emotion analysis.")  # 요청 수신 로그 출력 
+        print("KoBert 작동중...")  # 요청 수신 로그 출력
+        subtitle_url = "https://storage.googleapis.com/pretzel-movie/"+subtitle_url
+        response = requests.get(subtitle_url, stream=True)
+        response.encoding = 'utf-8'
+        subtitle_text = response.text
+        subtitle_text = subtitle_text.replace('\r\n', '\n').replace('\r', '\n')
+        kobert_eval(subtitle_text)
+        return 1
 
     except Exception as e:
         print(f"Exception: {str(e)}")  # 예외 발생 시 로그 출력
