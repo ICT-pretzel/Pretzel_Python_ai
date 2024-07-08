@@ -17,3 +17,4 @@ __pycache__/
 
 # 특정 파일 제외
 actor_embeddings.pkl
+ict-pretzel-43373d904ced.json
