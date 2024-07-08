@@ -4,10 +4,21 @@ import gc
 import pickle
 from deepface import DeepFace
 from scipy.spatial import distance
-from fastapi import HTTPException
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import requests
 from tqdm import tqdm
 import uuid
+import json
+from datetime import datetime
+from urllib.parse import urlparse
+
+router = APIRouter()
+
+class VideoURL(BaseModel):
+    url: str
+    actors: dict
 
 def adjust_brightness_contrast(image, brightness=0, contrast=0):
     brightness = max(-127, min(127, brightness))
@@ -120,9 +131,38 @@ def process_video(video_url, embeddings, threshold=0.6, interval=30, min_interva
             if len(ts) > 100:
                 continue
             for t in ts:
-                final_results.append({"time": convert_seconds_to_srt_timestamp(t), "label": actor})
+                final_results.append({"time": convert_seconds_to_hms(t), "label": actor})
 
         return final_results
     except Exception as e:
         print(f"Exception in process_video: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+def get_filename_from_url(url: str) -> str:
+    parsed_url = urlparse(url)
+    return os.path.basename(parsed_url.path).split('.')[0]
+
+@router.post("/")
+async def actor_face_movie(video_url: VideoURL):
+    print("배우 얼굴 인식 요청을 받았습니다.")
+    try:
+        update_actors(video_url.actors, embeddings)
+        print("배우 정보를 성공적으로 업데이트했습니다.")
+
+        final_results = process_video(video_url.url, embeddings)
+        
+        video_filename = get_filename_from_url(video_url.url)
+
+        # 결과를 results 폴더에 저장
+        os.makedirs('results', exist_ok=True)
+        filename = f"{video_filename}_actor_face_results.json"
+        with open(os.path.join('results', filename), 'w', encoding='utf-8') as f:
+            json.dump({"actor_timestamps": final_results}, f, ensure_ascii=False, indent=4)
+
+        return JSONResponse(content={"actor_timestamps": final_results})
+
+    except Exception as e:
+        print(f"예외 발생: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+embeddings = load_embeddings()
