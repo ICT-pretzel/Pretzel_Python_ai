@@ -120,7 +120,7 @@ def process_video(video_url, embeddings, threshold=0.6, interval=30, min_interva
             if len(ts) > 100:
                 continue
             for t in ts:
-                final_results.append({"time": convert_seconds_to_hms(t), "label": actor})
+                final_results.append({"time": convert_seconds_to_srt_timestamp(t), "label": actor})
 
         return final_results
     except Exception as e:
