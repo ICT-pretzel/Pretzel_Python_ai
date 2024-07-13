@@ -45,6 +45,14 @@ model.eval()
 # 타임스탬프별로 텍스트 예측 수행
 def kobert_eval(text):
     content = extract_str(text)
+    timelog = []
+    bert_count={        
+        "sad": 0,
+        "hap": 0,
+        "neu": 0,
+        "ang": 0,
+        "anx": 0
+    }
     for timestamp, text in content:
         # 입력 텍스트를 토크나이징
         inputs = tokenizer(text, truncation=True, padding=True, max_length=64, return_tensors="pt")
@@ -59,10 +67,9 @@ def kobert_eval(text):
         
         # 예측된 레이블 출력
         predicted_label_index  = torch.argmax(probabilities, dim=1).item()
-        labels = ['무감정', '슬픔', '분노', '기쁨', '불안']
+        labels = ['neu', 'sad', 'ang', 'hap', 'anx']
         predicted_label = labels[predicted_label_index]
-        
-        # 결과 출력
-        print(f"Timestamp: {timestamp}")
-        print(f"Text: {text}")
-        print(f"Predicted label: {predicted_label}\n")
+        bert_count[predicted_label] += 1
+        result = {"time": timestamp,"label": predicted_label}
+        timelog.append(result)
+    return timelog, bert_count
