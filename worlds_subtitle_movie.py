@@ -97,7 +97,6 @@ def translate_srt_to_vtt(input_srt_path, target_languages, base_filename):
     
     return results
 
-@router.post("/")
 def translate_subtitle(subtitle_request: SubtitleRequest):
     gcs_url = subtitle_request.url
     target_languages = ["ko", "ja", "zh", "en", "fr", "de", "es", "it", "pt", "ru", "hi"]

@@ -6,7 +6,6 @@ import re
 def extract_str(content):
     pattern = re.compile(r'(\d+)\n(\d{2}:\d{2}:\d{2}.\d{3} --> \d{2}:\d{2}:\d{2}.\d{3})\n(.*?)\n\n', re.DOTALL)
     matches = pattern.findall(content)
-    print(matches)
     subtitles = []
     for match in matches:
         index, timestamp, text = match
@@ -39,11 +38,10 @@ model = BertForSequenceClassification.from_pretrained(
     state_dict=state_dict
 )
 
-# 모델을 평가 모드로 설정
-model.eval()
-
 # 타임스탬프별로 텍스트 예측 수행
 def kobert_eval(text):
+    # 모델을 평가 모드로 설정
+    model.eval()
     content = extract_str(text)
     timelog = []
     bert_count={        

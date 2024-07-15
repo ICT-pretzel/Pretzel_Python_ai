@@ -5,14 +5,10 @@ import pickle
 from deepface import DeepFace
 from scipy.spatial import distance
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import requests
 from tqdm import tqdm
 import uuid
-import json
-from datetime import datetime
-from urllib.parse import urlparse
 
 router = APIRouter()
 
@@ -44,7 +40,7 @@ def convert_seconds_to_hms(seconds):
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
     s = seconds % 60
-    return f"{h:02}:{m:02}:{s:05.2f}"
+    return f"{h:02}:{m:02}:{s:06.3f}"
 
 def update_actors(actors, embeddings):
     if not os.path.exists("images"):
@@ -137,32 +133,3 @@ def process_video(video_url, embeddings, threshold=0.6, interval=30, min_interva
     except Exception as e:
         print(f"Exception in process_video: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-def get_filename_from_url(url: str) -> str:
-    parsed_url = urlparse(url)
-    return os.path.basename(parsed_url.path).split('.')[0]
-
-@router.post("/")
-async def actor_face_movie(video_url: VideoURL):
-    print("배우 얼굴 인식 요청을 받았습니다.")
-    try:
-        update_actors(video_url.actors, embeddings)
-        print("배우 정보를 성공적으로 업데이트했습니다.")
-
-        final_results = process_video(video_url.url, embeddings)
-        
-        video_filename = get_filename_from_url(video_url.url)
-
-        # 결과를 results 폴더에 저장
-        os.makedirs('results', exist_ok=True)
-        filename = f"{video_filename}_actor_face_results.json"
-        with open(os.path.join('results', filename), 'w', encoding='utf-8') as f:
-            json.dump({"actor_timestamps": final_results}, f, ensure_ascii=False, indent=4)
-
-        return JSONResponse(content={"actor_timestamps": final_results})
-
-    except Exception as e:
-        print(f"예외 발생: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-embeddings = load_embeddings()

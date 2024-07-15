@@ -7,12 +7,8 @@ from tqdm import tqdm
 from transformers import pipeline
 import requests
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uuid
-import json
-from datetime import datetime
-from urllib.parse import urlparse
 
 router = APIRouter()
 
@@ -101,7 +97,7 @@ def convert_seconds_to_hms(seconds):
     h = int(seconds // 3600)
     m = int((seconds % 3600) // 60)
     s = seconds % 60
-    return f"{h:02}:{m:02}:{s:05.2f}".replace('.', ',')
+    return f"{h:02}:{m:02}:{s:06.3f}"
 
 def process_emotion_music_movie(video_url):
     try:
@@ -141,52 +137,3 @@ def process_emotion_music_movie(video_url):
     except Exception as e:
         print(f"Exception in process_emotion_music_movie: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-def get_filename_from_url(url: str) -> str:
-    parsed_url = urlparse(url)
-    return os.path.basename(parsed_url.path).split('.')[0]
-
-def save_results_as_json(results, filename):
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False, indent=4)
-
-@router.post("/")
-async def emotion_music_movie(video_url: VideoURLWithoutActors):
-    print("음악 감정 분석 요청을 받았습니다.")
-    try:
-        final_results, emotion_counts = process_emotion_music_movie(video_url.url)
-
-        video_filename = get_filename_from_url(video_url.url)
-
-        # 결과를 results 폴더에 저장
-        os.makedirs('results', exist_ok=True)
-        json_filename = f"{video_filename}_emotion_music_results.json"
-
-        save_results_as_json(final_results, os.path.join('results', json_filename))
-
-        return JSONResponse(content={"message": f"Results saved to {json_filename}"})
-
-    except Exception as e:
-        print(f"예외 발생: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Export the router to be included in main.py
-emotion_music_movie_router = router
-import os
-import uvicorn
-from fastapi import FastAPI
-from actor_face_movie_util import router as actor_face_movie_router
-from emotion_music_movie_util import router as emotion_music_movie_router
-from worlds_subtitle_movie import router as worlds_subtitle_movie_router
-
-app = FastAPI()
-
-# Include routers from other modules
-app.include_router(actor_face_movie_router, prefix="/actor_face_movie")
-app.include_router(emotion_music_movie_router, prefix="/emotion_music_movie")
-app.include_router(worlds_subtitle_movie_router, prefix="/worlds_subtitle_movie")
-
-if __name__ == "__main__":
-    print("서버를 시작합니다...")
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\ICT05_04\\Desktop\\finalproject\\movie\\translate-movie-427703-adec2ac5235a.json"
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
