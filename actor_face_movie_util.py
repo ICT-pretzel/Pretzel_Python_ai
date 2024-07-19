@@ -42,36 +42,36 @@ def convert_seconds_to_hms(seconds):
 # 이미지 전처리
 def preprocess_image_from_url(img_url):
     try:
-        # Load the image from the URL
+        # url에서 이미지 데이터를 불러오고, 유효성 검사
         response = requests.get(img_url, stream=True)
         response.raise_for_status()
         
-        # Convert image bytes to numpy array
+        # 이미지 데이터를 numpy배열데이터로 변환
         img_array = np.asarray(bytearray(response.content), dtype=np.uint8)
         
-        # Decode numpy array as image
+        # 이미지 numpy배열 데이터를 컬러이미지로 디코딩하기
         img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         
         if img is None:
             raise ValueError("Failed to load image from URL.")
         
-        # Initialize MTCNN for face detection
+        # 얼굴 인식 라이브러리 MTCNN에서 함수 선언
         detector = MTCNN()
         
-        # Detect faces
+        # 이미지에서 얼굴 이미지 찾기
         faces = detector.detect_faces(img)
         
         if len(faces) == 0:
             raise ValueError("No face detected in the image.")
         
-        # Assume only one face is detected, take the first one
+        # 찾아낸 얼굴 이미지 좌표를 원본 이미지에서 추출
         x, y, w, h = faces[0]['box']
         face_img = img[y:y+h, x:x+w]
         
-        # Resize the face image to a fixed size (e.g., 160x160)
+        # 이미지 크기를 160,160으로 일관화
         face_resized = cv2.resize(face_img, (160, 160))
         
-        # Enhance the image
+        # PIL라이브러리로 이미지의 명암을 1.5비율로 극대화 전처리 작업
         face_pil = Image.fromarray(cv2.cvtColor(face_resized, cv2.COLOR_BGR2RGB))
         enhancer = ImageEnhance.Contrast(face_pil)
         face_enhanced = enhancer.enhance(1.5)  # Adjust contrast factor as needed
@@ -84,27 +84,27 @@ def preprocess_image_from_url(img_url):
 def update_actors(actors, embeddings):
     for actor, img_url in actors.items():
         try:
-            # Preprocess the image directly from URL
+            # 이미지 전처리 함수로 전처리
             img_url_full = "https://image.tmdb.org/t/p/original" + img_url
             preprocessed_img = preprocess_image_from_url(img_url_full)
             
-            # Save the preprocessed image to a temporary file
+            # DeepFace.represent의 인자로 보낼 이미지 경로를 설정하기 위해 임의의 파일 생성
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_img:
                 temp_img_path = temp_img.name
                 preprocessed_img.save(temp_img_path)
                 
-                # Use DeepFace to get embedding from the temporary image file
+                # Deepface 임베딩
                 embedding = DeepFace.represent(img_path=temp_img_path, model_name="Facenet", enforce_detection=False)[0]["embedding"]
                 embeddings[actor] = embedding
             
-                # Clean up: Delete the temporary image file
+                # 임시 파일 삭제
                 temp_img.close()
                 os.remove(temp_img_path)
             
         except (requests.exceptions.RequestException, ValueError) as e:
             raise HTTPException(status_code=400, detail=f"Failed to process image for actor {actor}: {e}")
 
-    # Save embeddings to pickle file
+    # 임베딩 데이터를 파일에 저장(실제 분석 모델에서 사용하기 위해)
     with open("actor_embeddings.pkl", "wb") as f:
         pickle.dump(embeddings, f)
 
