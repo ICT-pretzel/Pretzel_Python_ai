@@ -4,17 +4,14 @@ import gc
 import pickle
 from deepface import DeepFace
 from scipy.spatial import distance
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import HTTPException
 import requests
 from tqdm import tqdm
 import uuid
-
-router = APIRouter()
-
-class VideoURL(BaseModel):
-    url: str
-    actors: dict
+import numpy as np
+from PIL import Image, ImageEnhance
+from mtcnn import MTCNN
+import tempfile
 
 def adjust_brightness_contrast(image, brightness=0, contrast=0):
     brightness = max(-127, min(127, brightness))
@@ -42,27 +39,72 @@ def convert_seconds_to_hms(seconds):
     s = seconds % 60
     return f"{h:02}:{m:02}:{s:06.3f}"
 
+# 이미지 전처리
+def preprocess_image_from_url(img_url):
+    try:
+        # Load the image from the URL
+        response = requests.get(img_url, stream=True)
+        response.raise_for_status()
+        
+        # Convert image bytes to numpy array
+        img_array = np.asarray(bytearray(response.content), dtype=np.uint8)
+        
+        # Decode numpy array as image
+        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            raise ValueError("Failed to load image from URL.")
+        
+        # Initialize MTCNN for face detection
+        detector = MTCNN()
+        
+        # Detect faces
+        faces = detector.detect_faces(img)
+        
+        if len(faces) == 0:
+            raise ValueError("No face detected in the image.")
+        
+        # Assume only one face is detected, take the first one
+        x, y, w, h = faces[0]['box']
+        face_img = img[y:y+h, x:x+w]
+        
+        # Resize the face image to a fixed size (e.g., 160x160)
+        face_resized = cv2.resize(face_img, (160, 160))
+        
+        # Enhance the image
+        face_pil = Image.fromarray(cv2.cvtColor(face_resized, cv2.COLOR_BGR2RGB))
+        enhancer = ImageEnhance.Contrast(face_pil)
+        face_enhanced = enhancer.enhance(1.5)  # Adjust contrast factor as needed
+        return face_enhanced
+        
+    except (requests.exceptions.RequestException, ValueError, IndexError) as e:
+        raise HTTPException(status_code=400, detail=f"Failed to process image: {e}")
+
+
 def update_actors(actors, embeddings):
-    if not os.path.exists("images"):
-        os.makedirs("images")
     for actor, img_url in actors.items():
         try:
-            response = requests.get(img_url, stream=True)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            raise HTTPException(status_code=400, detail=f"Failed to download image for actor {actor}: {e}")
+            # Preprocess the image directly from URL
+            img_url_full = "https://image.tmdb.org/t/p/original" + img_url
+            preprocessed_img = preprocess_image_from_url(img_url_full)
+            
+            # Save the preprocessed image to a temporary file
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_img:
+                temp_img_path = temp_img.name
+                preprocessed_img.save(temp_img_path)
+                
+                # Use DeepFace to get embedding from the temporary image file
+                embedding = DeepFace.represent(img_path=temp_img_path, model_name="Facenet", enforce_detection=False)[0]["embedding"]
+                embeddings[actor] = embedding
+            
+                # Clean up: Delete the temporary image file
+                temp_img.close()
+                os.remove(temp_img_path)
+            
+        except (requests.exceptions.RequestException, ValueError) as e:
+            raise HTTPException(status_code=400, detail=f"Failed to process image for actor {actor}: {e}")
 
-        img_path = os.path.join("images", f"{actor.replace(' ', '_')}.jpg")
-        with open(img_path, "wb") as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-        
-        try:
-            embedding = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=True)[0]["embedding"]
-            embeddings[actor] = embedding
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=f"Failed to generate embedding for actor {actor}: {e}")
-
+    # Save embeddings to pickle file
     with open("actor_embeddings.pkl", "wb") as f:
         pickle.dump(embeddings, f)
 
