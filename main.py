@@ -1,7 +1,7 @@
 import os
 
 # 서비스 계정 키 파일의 경로를 환경 변수로 설정
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "translate-movie-427703-adec2ac5235a.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "ict-pretzel-43373d904ced.json"
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -16,6 +16,7 @@ from worlds_subtitle_movie import translate_subtitle
 from urllib.parse import unquote, urlparse
 from kobert import kobert_eval
 from datetime import datetime, timedelta
+from google.cloud import storage
 
 app = FastAPI()
 
@@ -30,7 +31,9 @@ class VideoURLWithoutActors(BaseModel):
 class SubtitleRequest(BaseModel):
     url: str
 
-embeddings = load_embeddings()
+# 프로젝트 ID 및 버킷 이름 설정
+project_id = 'ict-pretzel'
+bucket_name = 'pretzel-movie'
 
 # 시간 변환 함수
 def time_to_seconds(time_str):
@@ -55,19 +58,35 @@ def get_filename_from_url(url: str) -> str:
 def actor_face_movie(video_url: VideoURL):
     print("배우 얼굴 인식 요청을 받았습니다.")
     try:
+        # 배우 사진 임베딩 정보 로드
+        embeddings = load_embeddings()
+        
         update_actors(video_url.actors, embeddings)
         print("배우 정보를 성공적으로 업데이트했습니다.")
 
-        final_results = process_video(video_url.url, embeddings)
+        
+        final_results = process_video("https://storage.googleapis.com/pretzel-movie/"+video_url.url, embeddings)
+        
+        # Storage 클라이언트 생성 (환경 변수를 통해 인증 정보를 자동으로 인식)
+        client = storage.Client(project=project_id)
 
-        # 결과를 results 폴더에 저장
-        os.makedirs('results', exist_ok=True)
+        # 업로드 파일 json화
+        json_res = json.dumps(final_results)
+        
+        # 파일 이름 설정
         original_filename = get_filename_from_url(video_url.url)
-        filename = f"{original_filename}_actor_face_results.json"
-        with open(os.path.join('results', filename), 'w', encoding='utf-8') as f:
-            json.dump({"actor_timestamps": final_results}, f, ensure_ascii=False, indent=4)
+        deepface_filename = f"{original_filename}_deepface.json"
+        
+        # 스토리지 폴더 밀 이름 설정
+        deepface_folder = "pretzel-deepfaceAI/"
+        deepface_blob_name = deepface_folder + deepface_filename
 
-        return JSONResponse(content={"actor_timestamps": final_results})
+        # 결과 파일 업로드
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(deepface_blob_name)
+        blob.upload_from_string(json_res, content_type='application/json')
+
+        return 1
 
     except Exception as e:
         print(f"예외 발생: {str(e)}")
@@ -88,7 +107,7 @@ async def emotion_music_movie(request: VideoURLWithoutActors):
         print("코버트 카운트", kobert_counts)
         
         print("emotion_music_movie 작동중...")  # 요청 수신 로그 출력
-        music_results, music_counts = process_emotion_music_movie(request.video_url)
+        music_results, music_counts = process_emotion_music_movie("https://storage.googleapis.com/pretzel-movie/"+request.video_url)
         
         print("음악 카운트", music_counts)
         
@@ -104,13 +123,36 @@ async def emotion_music_movie(request: VideoURLWithoutActors):
             "ang": int(kobert_counts["ang"]*0.4+music_counts["ang"]*0.6),
             "anx": int(kobert_counts["anx"]*0.4+music_counts["anx"]*0.6)
         }
-        # 결과를 results 폴더에 저장
-        os.makedirs('results', exist_ok=True)
+        
+        # Storage 클라이언트 생성 (환경 변수를 통해 인증 정보를 자동으로 인식)
+        client = storage.Client(project=project_id)
+
+        # 업로드 파일 json화
+        json_res = json.dumps(final_results)
+        json_count = json.dumps(emotion_counts)
+        
+        # 파일 이름 설정
         original_filename = get_filename_from_url(request.video_url)
-        filename = f"{original_filename}_emotion_music_results.json"
-        with open(os.path.join('results', filename), 'w', encoding='utf-8') as f:
-            json.dump({"mood_results": final_results, "emotion_counts": emotion_counts}, f, ensure_ascii=False, indent=4)
-        return JSONResponse(content={"mood_results": final_results, "emotion_counts": emotion_counts})
+        emotion_res_filename = f"{original_filename}_emotion_res.json"
+        emotion_count_filename = f"{original_filename}_emotion_count.json"
+        
+        # 스토리지 폴더 밀 이름 설정
+        res_folder = "pretzel-emotionResAI/"
+        count_folder = "pretzel-emotionCountAI/"
+        res_blob_name = res_folder + emotion_res_filename
+        count_blob_name = count_folder + emotion_count_filename
+
+        # 결과 파일 업로드
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(res_blob_name)
+        blob.upload_from_string(json_res, content_type='application/json')
+        
+        # 카운트 파일 업로드
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(count_blob_name)
+        blob.upload_from_string(json_count, content_type='application/json')
+        
+        return 1
     
     except Exception as e:
         print(f"예외 발생: {str(e)}")
