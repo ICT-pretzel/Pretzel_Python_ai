@@ -168,9 +168,6 @@ def worlds_subtitle_movie(subtitle_request: SubtitleRequest):
         print(f"예외 발생: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-if not os.path.exists("images"):
-    os.makedirs("images")
-
 if __name__ == "__main__":
     print("서버를 시작합니다...")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
