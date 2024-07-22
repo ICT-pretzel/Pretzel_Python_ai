@@ -6,6 +6,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "ict-pretzel-43373d904ced.json"
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
 from datetime import datetime
@@ -19,6 +20,20 @@ from datetime import datetime, timedelta
 from google.cloud import storage
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:3010",
+    "http://127.0.0.1:3010",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class VideoURL(BaseModel):
     url: str
