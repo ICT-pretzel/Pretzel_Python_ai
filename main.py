@@ -118,13 +118,9 @@ async def emotion_music_movie(request: VideoURLWithoutActors):
         subtitle_text = response.text
         subtitle_text = subtitle_text.replace('\r\n', '\n').replace('\r', '\n')
         kobert_results, kobert_counts = kobert_eval(subtitle_text)
-
-        print("코버트 카운트", kobert_counts)
         
         print("emotion_music_movie 작동중...")  # 요청 수신 로그 출력
         music_results, music_counts = process_emotion_music_movie("https://storage.googleapis.com/pretzel-movie/"+request.video_url)
-        
-        print("음악 카운트", music_counts)
         
         final_results = []
         for entry1 in music_results:
