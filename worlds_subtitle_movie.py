@@ -32,7 +32,7 @@ def translate_text(text, target_language):
     if target_language == "ko":  # 타겟 언어가 한국어인 경우
         return text  # 번역을 생략하고 원본 텍스트 반환
     client = translate.TranslationServiceClient()  # Google Translate 클라이언트 초기화
-    parent = f"projects/translate-movie-427703/locations/global"  # 프로젝트와 위치 설정
+    parent = f"projects/ict-pretzel/locations/global"  # 프로젝트와 위치 설정
     
     retry = Retry(initial=1.0, maximum=10.0, multiplier=2.0, deadline=60.0)  # 재시도 설정
     try:
@@ -97,8 +97,7 @@ def translate_srt_to_vtt(input_srt_path, target_languages, base_filename):
     
     return results
 
-@router.post("/")
-async def translate_subtitle(subtitle_request: SubtitleRequest):
+def translate_subtitle(subtitle_request: SubtitleRequest):
     gcs_url = subtitle_request.url
     target_languages = ["ko", "ja", "zh", "en", "fr", "de", "es", "it", "pt", "ru", "hi"]
     

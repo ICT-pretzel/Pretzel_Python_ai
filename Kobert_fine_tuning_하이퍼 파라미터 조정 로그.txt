@@ -1,0 +1,67 @@
+1번째 튜닝 정확도 : 0.27
+
+training_args = TrainingArguments(
+    output_dir='./output',  # 모델과 로그를 저장할 디렉토리
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
+    num_train_epochs=3,
+    logging_dir='./logs',  # 로그 파일을 저장할 디렉토리
+    logging_steps=500,  # 매 500번째 스텝마다 로그를 출력
+    eval_strategy="epoch",  # 각 에포크의 끝에서 평가 수행
+    save_strategy="epoch",  # 각 에포크의 끝에서 모델 저장
+    save_total_limit=1,  # 최대 저장 모델 수
+)
+
+2번째 튜닝 정확도 : 0.28
+training_args = TrainingArguments(
+    output_dir='./output',
+    per_device_train_batch_size=32,
+    per_device_eval_batch_size=32,
+    num_train_epochs=5,
+    learning_rate=5e-5,  # 학습률 조정
+    logging_dir='./logs',
+    logging_steps=100,
+    save_steps=1000,
+    eval_strategy="epoch",
+    save_strategy="epoch",
+    fp16=True
+)
+
+
+3번째 튜닝 정확도 : .074
+# 5. 훈련 인자 설정 및 훈련
+training_args = TrainingArguments(
+    output_dir='./output',
+    per_device_train_batch_size=64,
+    per_device_eval_batch_size=64,
+    num_train_epochs=5,
+    learning_rate=5e-5,
+    logging_dir='./logs',
+    logging_steps=200,
+    save_steps=1000,
+    eval_strategy="epoch",
+    save_strategy="epoch",
+    warmup_ratio=0.1,  # warmup_ratio를 직접 사용할 수 없어 대략적인 step으로 변환
+    max_grad_norm=1.0,
+    seed=42
+)
+
+4번째 튜닝 정확도 : .074
+# 5. 훈련 인자 설정 및 훈련
+training_args = TrainingArguments(
+    output_dir='./output',
+    per_device_train_batch_size=64,
+    per_device_eval_batch_size=64,
+    num_train_epochs=10,
+    learning_rate=2e-5, # 학습률
+    lr_scheduler_type='linear', # 학습률을 선형적으로 감소
+    weight_decay=0.01, # L2 규제 가중치 감쇠
+    logging_dir='./logs',
+    logging_steps=200,
+    save_steps=1000,
+    eval_strategy="epoch",
+    save_strategy="epoch",
+    warmup_ratio=0.1,
+    max_grad_norm=1.0,
+    seed=42
+)

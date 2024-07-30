@@ -13,3 +13,6 @@ soundfile
 transformers
 torch
 tf_keras
+google-cloud-storage
+Pillow
+MTCNN

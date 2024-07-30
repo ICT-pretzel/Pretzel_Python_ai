@@ -3,19 +3,25 @@ from transformers import BertTokenizer, BertForSequenceClassification
 from safetensors.torch import load_file
 import re
 
-def extract_str(srt_file_path):
-    with open(srt_file_path, 'r', encoding='utf-8') as file:
-        content = file.read()
-
+def extract_str(content):
     pattern = re.compile(r'(\d+)\n(\d{2}:\d{2}:\d{2}.\d{3} --> \d{2}:\d{2}:\d{2}.\d{3})\n(.*?)\n\n', re.DOTALL)
     matches = pattern.findall(content)
-
     subtitles = []
     for match in matches:
         index, timestamp, text = match
+        # 각 줄을 분리하고 [로 시작해서 ]로 끝나는 부분과 (로 시작해서 )로 끝나는 부분을 제거
+        lines = text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            # [로 시작해서 ]로 끝나는 부분 제거
+            line = re.sub(r'\[.*?\]', '', line)
+            # (로 시작해서 )로 끝나는 부분 제거
+            line = re.sub(r'\(.*?\)', '', line)
+            cleaned_lines.append(line.strip())
         # 텍스트의 여러 줄을 하나로 합치기
-        text = text.replace('\n', ' ').strip()
-        subtitles.append((timestamp, text))
+        text = ' '.join(cleaned_lines).strip()
+        if text:  # 빈 문자열이 아닌 경우에만 추가
+            subtitles.append((timestamp, text))
     
     return subtitles
 
@@ -32,32 +38,36 @@ model = BertForSequenceClassification.from_pretrained(
     state_dict=state_dict
 )
 
-# 예측할 텍스트 추출
-file_path = '스물.srt'
-subtitles = extract_str(file_path)
-
-# 모델을 평가 모드로 설정
-model.eval()
-
 # 타임스탬프별로 텍스트 예측 수행
-for timestamp, text in subtitles:
-    # 입력 텍스트를 토크나이징
-    inputs = tokenizer(text, truncation=True, padding=True, max_length=64, return_tensors="pt")
-    
-    # 입력 데이터를 모델에 전달하여 예측 수행
-    with torch.no_grad():
-        outputs = model(**inputs)
-    
-    # 로짓(logits) 추출 및 소프트맥스 함수 적용하여 확률 값 계산
-    logits = outputs.logits
-    probabilities = torch.nn.functional.softmax(logits, dim=-1)
-    
-    # 예측된 레이블 출력
-    predicted_label_index  = torch.argmax(probabilities, dim=1).item()
-    labels = ['무감정', '슬픔', '분노', '기쁨', '불안']
-    predicted_label = labels[predicted_label_index]
-    
-    # 결과 출력
-    print(f"Timestamp: {timestamp}")
-    print(f"Text: {text}")
-    print(f"Predicted label: {predicted_label}\n")
+def kobert_eval(text):
+    # 모델을 평가 모드로 설정
+    model.eval()
+    content = extract_str(text)
+    timelog = []
+    bert_count={        
+        "sad": 0,
+        "hap": 0,
+        "neu": 0,
+        "ang": 0,
+        "anx": 0
+    }
+    for timestamp, text in content:
+        # 입력 텍스트를 토크나이징
+        inputs = tokenizer(text, truncation=True, padding=True, max_length=64, return_tensors="pt")
+        
+        # 입력 데이터를 모델에 전달하여 예측 수행
+        with torch.no_grad():
+            outputs = model(**inputs)
+        
+        # 로짓(logits) 추출 및 소프트맥스 함수 적용하여 확률 값 계산
+        logits = outputs.logits
+        probabilities = torch.nn.functional.softmax(logits, dim=-1)
+        
+        # 예측된 레이블 출력
+        predicted_label_index  = torch.argmax(probabilities, dim=1).item()
+        labels = ['neu', 'sad', 'ang', 'hap', 'anx']
+        predicted_label = labels[predicted_label_index]
+        bert_count[predicted_label] += 1
+        result = {"time": timestamp,"label": predicted_label}
+        timelog.append(result)
+    return timelog, bert_count
